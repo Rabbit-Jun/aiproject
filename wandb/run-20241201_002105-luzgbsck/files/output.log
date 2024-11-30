@@ -1,0 +1,28 @@
+C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\callbacks\model_checkpoint.py:654: Checkpoint directory C:\Users\junun\Documents\aiclass\checkpoint exists and is not empty.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name    | Type             | Params | Mode
+-----------------------------------------------------
+0 | model   | Sequential       | 25.3 M | train
+1 | loss_fn | CrossEntropyLoss | 0      | train
+-----------------------------------------------------
+25.3 M    Trainable params
+0         Non-trainable params
+25.3 M    Total params
+101.196   Total estimated model params size (MB)
+10        Modules in train mode
+0         Modules in eval mode
+Epoch 0: 100%|███████████████████████████████████| 55/55 [00:14<00:00,  3.82it/s, v_num=bsck]
+C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\connectors\data_connector.py:424: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=79` in the `DataLoader` to improve performance.
+C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\connectors\data_connector.py:424: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=79` in the `DataLoader` to improve performance.
+Testing DataLoader 0: 100%|██████████████████████████████████| 18/18 [00:03<00:00,  5.64it/s]
+`Trainer.fit` stopped: `max_epochs=1` reached.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\connectors\data_connector.py:424: The 'test_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=79` in the `DataLoader` to improve performance.
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃[1m [0m[1m       Test metric       [0m[1m [0m┃[1m [0m[1m      DataLoader 0       [0m[1m [0m┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│[36m [0m[36m     test_epoch_acc      [0m[36m [0m│[35m [0m[35m   0.36313867568969727   [0m[35m [0m│
+│[36m [0m[36m     test_epoch_loss     [0m[36m [0m│[35m [0m[35m   1.4861063957214355    [0m[35m [0m│
+│[36m [0m[36m        test_loss        [0m[36m [0m│[35m [0m[35m    1.494104266166687    [0m[35m [0m│
+└───────────────────────────┴───────────────────────────┘

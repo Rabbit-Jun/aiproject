@@ -1,0 +1,60 @@
+C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\callbacks\model_checkpoint.py:654: Checkpoint directory C:\Users\junun\Documents\aiclass\checkpoint exists and is not empty.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\torch\optim\lr_scheduler.py:62: UserWarning: The verbose parameter is deprecated. Please use get_last_lr() to access the learning rate.
+  warnings.warn(
+
+  | Name    | Type             | Params | Mode
+-----------------------------------------------------
+0 | model   | Sequential       | 25.3 M | train
+1 | loss_fn | CrossEntropyLoss | 0      | train
+-----------------------------------------------------
+25.3 M    Trainable params
+0         Non-trainable params
+25.3 M    Total params
+101.196   Total estimated model params size (MB)
+10        Modules in train mode
+0         Modules in eval mode
+Sanity Checking DataLoader 0:   0%|                                    | 0/2 [00:00<?, ?it/s]
+C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\connectors\data_connector.py:424: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=79` in the `DataLoader` to improve performance.
+Traceback (most recent call last):
+  File "C:\Users\junun\documents\aiclass\main.py", line 217, in <module>
+    main(args.model, args.dataset, args.data, args.batch, args.epoch, args.save,
+  File "C:\Users\junun\documents\aiclass\main.py", line 162, in main
+    trainer.fit(model, datamodule)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\trainer.py", line 538, in fit
+    call._call_and_handle_interrupt(
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\call.py", line 47, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\trainer.py", line 574, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\trainer.py", line 1023, in _run_stage
+    self._run_sanity_check()
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\trainer.py", line 1052, in _run_sanity_check
+    val_loop.run()
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\loops\utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\loops\evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\loops\evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\strategies\strategy.py", line 411, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+  File "C:\Users\junun\documents\aiclass\main.py", line 42, in validation_step
+    output = self.model(inputs)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\torch\nn\modules\module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\torch\nn\modules\module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\torch\nn\modules\container.py", line 250, in forward
+    input = module(input)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\torch\nn\modules\module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\torch\nn\modules\module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\torch\nn\modules\linear.py", line 125, in forward
+    return F.linear(input, self.weight, self.bias)
+RuntimeError: mat1 and mat2 shapes cannot be multiplied (32x150528 and 49152x512)

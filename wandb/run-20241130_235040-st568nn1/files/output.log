@@ -1,0 +1,28 @@
+Traceback (most recent call last):
+  File "C:\Users\junun\documents\aiclass\main.py", line 207, in <module>
+    main(args.model, args.dataset, args.data, args.batch, args.epoch, args.save,
+  File "C:\Users\junun\documents\aiclass\main.py", line 152, in main
+    trainer.fit(model, datamodule)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\trainer.py", line 538, in fit
+    call._call_and_handle_interrupt(
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\call.py", line 47, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\trainer.py", line 574, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\trainer.py", line 943, in _run
+    call._call_setup_hook(self)  # allow user to set up LightningModule in accelerator environment
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\call.py", line 102, in _call_setup_hook
+    _call_lightning_datamodule_hook(trainer, "setup", stage=fn)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\call.py", line 189, in _call_lightning_datamodule_hook
+    return fn(*args, **kwargs)
+  File "C:\Users\junun\documents\aiclass\src\dataset.py", line 66, in setup
+    self.train_dataset = datasets.ImageFolder(
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\torchvision\datasets\folder.py", line 328, in __init__
+    super().__init__(
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\torchvision\datasets\folder.py", line 149, in __init__
+    classes, class_to_idx = self.find_classes(self.root)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\torchvision\datasets\folder.py", line 234, in find_classes
+    return find_classes(directory)
+  File "C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\torchvision\datasets\folder.py", line 41, in find_classes
+    classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
+FileNotFoundError: [WinError 3] 지정된 경로를 찾을 수 없습니다: '../dataset\\flowers/train'

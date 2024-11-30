@@ -1,0 +1,30 @@
+C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\callbacks\model_checkpoint.py:654: Checkpoint directory C:\Users\junun\Documents\aiclass\checkpoint exists and is not empty.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\torch\optim\lr_scheduler.py:62: UserWarning: The verbose parameter is deprecated. Please use get_last_lr() to access the learning rate.
+  warnings.warn(
+
+  | Name    | Type             | Params | Mode
+-----------------------------------------------------
+0 | model   | Sequential       | 77.2 M | train
+1 | loss_fn | CrossEntropyLoss | 0      | train
+-----------------------------------------------------
+77.2 M    Trainable params
+0         Non-trainable params
+77.2 M    Total params
+308.814   Total estimated model params size (MB)
+10        Modules in train mode
+0         Modules in eval mode
+Epoch 49: 100%|████████████████████████████████████████████████████████████| 55/55 [00:23<00:00,  2.36it/s, v_num=nzxw]
+C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\connectors\data_connector.py:424: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=79` in the `DataLoader` to improve performance.
+C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\connectors\data_connector.py:424: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=79` in the `DataLoader` to improve performance.
+Testing DataLoader 0: 100%|████████████████████████████████████████████████████████████| 18/18 [00:05<00:00,  3.16it/s]
+`Trainer.fit` stopped: `max_epochs=50` reached.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+C:\Users\junun\miniconda3\envs\imagenet\lib\site-packages\lightning\pytorch\trainer\connectors\data_connector.py:424: The 'test_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=79` in the `DataLoader` to improve performance.
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃[1m [0m[1m       Test metric       [0m[1m [0m┃[1m [0m[1m      DataLoader 0       [0m[1m [0m┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│[36m [0m[36m     test_epoch_acc      [0m[36m [0m│[35m [0m[35m   0.5018247961997986    [0m[35m [0m│
+│[36m [0m[36m     test_epoch_loss     [0m[36m [0m│[35m [0m[35m   1.2978589534759521    [0m[35m [0m│
+│[36m [0m[36m        test_loss        [0m[36m [0m│[35m [0m[35m   1.3044261932373047    [0m[35m [0m│
+└───────────────────────────┴───────────────────────────┘
