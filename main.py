@@ -9,6 +9,10 @@ from torch import nn
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 from lightning.pytorch.loggers import WandbLogger
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, classification_report
+import wandb
 
 from src.dataset import CustomDataModule
 from src.model import create_model
@@ -26,21 +30,41 @@ class ClassficationModel(L.LightningModule):
         self.losses = []
         self.labels = []
         self.predictions = []
+        self.automatic_optimization = False
 
     def forward(self, inputs):
         return self.model(inputs)
 
     def training_step(self, batch, batch_idx):
         inputs, target = batch
-        output = self.model(inputs)
-        loss = self.loss_fn(output, target)
-        self.log('train_loss', loss)
-        return loss
+        if self.model.classifier_type != 'cnn':
+            self.model.set_targets(target)
+            output = self.model(inputs)
+            output = torch.nn.functional.one_hot(output.long(), num_classes=5).float()
+            loss = self.loss_fn(output, target)
+            self.log('train_loss', loss)
+            return loss
+        else:
+            opt = self.optimizers()
+            opt.zero_grad()
+            output = self.model(inputs)
+            loss = self.loss_fn(output, target)
+            self.manual_backward(loss)
+            opt.step()
+            self.log('train_loss', loss)
+            return loss
     
     def validation_step(self, batch, batch_idx):
         inputs, target = batch
+        if self.model.classifier_type != 'cnn':
+            self.model.set_targets(target)
         output = self.model(inputs)
-        loss =  self.loss_fn(output, target)
+        
+        # sklearn 분류기의 경우 출력을 one-hot 인코딩으로 변환
+        if self.model.classifier_type != 'cnn':
+            output = torch.nn.functional.one_hot(output.long(), num_classes=5).float()
+        
+        loss = self.loss_fn(output, target)
         _, predictions = torch.max(output, 1)
 
         target_np = target.detach().cpu().numpy()
@@ -70,8 +94,15 @@ class ClassficationModel(L.LightningModule):
     
     def test_step(self, batch, batch_idx):
         inputs, target = batch
+        if self.model.classifier_type != 'cnn':
+            self.model.set_targets(target)
         output = self.model(inputs)
-        loss =  self.loss_fn(output, target)
+        
+        # sklearn 분류기의 경우 출력을 one-hot 인코딩으로 변환
+        if self.model.classifier_type != 'cnn':
+            output = torch.nn.functional.one_hot(output.long(), num_classes=5).float()
+            
+        loss = self.loss_fn(output, target)
         _, predictions = torch.max(output, 1)
 
         target_np = target.detach().cpu().numpy()
@@ -84,16 +115,42 @@ class ClassficationModel(L.LightningModule):
         return loss
     
     def on_test_epoch_end(self):
-        labels = np.concatenate(np.array(self.labels, dtype = object))
-        predictions = np.concatenate(np.array(self.predictions, dtype = object))
+        labels = np.concatenate(np.array(self.labels, dtype=object))
+        predictions = np.concatenate(np.array(self.predictions, dtype=object))
         acc = sum(labels == predictions)/len(labels)
 
-        labels = labels.tolist()
-        predictions = predictions.tolist()
-        loss = sum(self.losses)/len(self.losses)
-
-        self.log('test_epoch_acc', acc)
-        self.log('test_epoch_loss', loss)
+        # 혼동 행렬 계산
+        cm = confusion_matrix(labels, predictions)
+        
+        # 클래스 이름 설정
+        if self.dataset_type == 'cifar10':
+            class_names = ["Airplane", "Automobile", "Bird", "Cat", "Deer",
+                         "Dog", "Frog", "Horse", "Ship", "Truck"]
+        else:  # flowers
+            class_names = ["Daisy", "Dandelion", "Rose", "Sunflower", "Tulip"]
+        
+        # 혼동 행렬 시각화
+        plt.figure(figsize=(10, 8))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+                   xticklabels=class_names,
+                   yticklabels=class_names)
+        plt.title('Confusion Matrix')
+        plt.xlabel('Predicted')
+        plt.ylabel('True')
+        plt.tight_layout()
+        
+        # WandB에 혼동 행렬 이미지 로깅
+        self.logger.experiment.log({
+            "confusion_matrix": wandb.Image(plt),
+            "test_epoch_acc": acc,
+            "test_epoch_loss": sum(self.losses)/len(self.losses)
+        })
+        
+        # 상세 분류 리포트 출력
+        print("\nClassification Report:")
+        print(classification_report(labels, predictions, target_names=class_names))
+        
+        plt.close()
         
         self.losses.clear()
         self.labels.clear()
@@ -107,21 +164,26 @@ class ClassficationModel(L.LightningModule):
         return pred_cls.detach().cpu().numpy(), img
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode='max', factor=0.1, patience=5, verbose=True
-        )
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": scheduler,
-                "monitor": "val_epoch_acc"
+        if self.model.classifier_type == 'cnn':
+            optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, mode='max', factor=0.5, patience=5, verbose=True
+            )
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "monitor": "val_epoch_acc"
+                }
             }
-        }
+        else:
+            # sklearn 분류기의 경우 optimizer가 필요 없음
+            return None
     
 
 def main(classification_model, dataset_type, data_path, batch, epoch, save_path, device, gpus, precision, mode, ckpt):
     model = ClassficationModel(create_model(classification_model, dataset_type))
+    model.dataset_type = dataset_type  # 데이터셋 타입 저장
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -199,12 +261,14 @@ def main(classification_model, dataset_type, data_path, batch, epoch, save_path,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--model', type=str, default='resnet')
+    parser.add_argument('-m', '--model', type=str, default='cnn',
+                        choices=['cnn', 'knn', 'svm', 'dt', 'mlp'],
+                        help='Model type to use')
     parser.add_argument('-dt', '--dataset', type=str, default='cifar10',
                         choices=['cifar10', 'flowers'],
                         help='Dataset to use (cifar10 or flowers)')
     parser.add_argument('-b', '--batch_size', dest='batch', type=int, default=32)
-    parser.add_argument('-e', '--epoch', type=int, default=50)
+    parser.add_argument('-e', '--epoch', type=int, default=1)
     parser.add_argument('-d', '--data_path', dest='data', type=str, default='./dataset')
     parser.add_argument('-s', '--save_path', dest='save', type=str, default='./checkpoint/')
     parser.add_argument('-dc', '--device', type=str, default='gpu')
