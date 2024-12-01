@@ -3,7 +3,7 @@ import shutil
 import random
 from pathlib import Path
 
-`def create_test_dataset(source_dir: str, target_dir: str, test_ratio: float = 0.2, seed: int = 42):
+def create_test_dataset(source_dir: str, target_dir: str, test_ratio: float = 0.2, seed: int = 42):
     """
     Train 데이터셋에서 일부를 분리하여 테스트 데이터셋 생성
     
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     
     # 새로운 테스트 데이터셋 생성
     create_test_dataset(train_dir, test_dir, test_ratio=0.2)
-    `
+    
     # 결과 출력
     print("\n데이터셋 분할 완료!")
     print("\n각 클래스별 파일 수:")

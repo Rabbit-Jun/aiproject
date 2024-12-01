@@ -21,7 +21,7 @@ from src.model import create_model
 SEED = 36
 L.seed_everything(SEED)
 class ClassficationModel(L.LightningModule):
-    def __init__(self,model, batch_size: int = 32, learning_rate: float = 0.0001):
+    def __init__(self, model, batch_size: int = 32, learning_rate: float = 0.0001, dataset_type: str = 'flowers'):
         super().__init__()
         self.model = model
         self.batch_size = batch_size
@@ -31,6 +31,8 @@ class ClassficationModel(L.LightningModule):
         self.labels = []
         self.predictions = []
         self.automatic_optimization = False
+        self.dataset_type = dataset_type  # 데이터셋 타입 저장
+        self.num_classes = 10 if dataset_type == 'cifar10' else 5  
 
     def forward(self, inputs):
         return self.model(inputs)
@@ -40,7 +42,7 @@ class ClassficationModel(L.LightningModule):
         if self.model.classifier_type != 'cnn':
             self.model.set_targets(target)
             output = self.model(inputs)
-            output = torch.nn.functional.one_hot(output.long(), num_classes=5).float()
+            output = torch.nn.functional.one_hot(output.long(), num_classes=self.num_classes).float()
             loss = self.loss_fn(output, target)
             self.log('train_loss', loss)
             return loss
@@ -62,7 +64,7 @@ class ClassficationModel(L.LightningModule):
         
         # sklearn 분류기의 경우 출력을 one-hot 인코딩으로 변환
         if self.model.classifier_type != 'cnn':
-            output = torch.nn.functional.one_hot(output.long(), num_classes=5).float()
+            output = torch.nn.functional.one_hot(output.long(), num_classes=self.num_classes).float()
         
         loss = self.loss_fn(output, target)
         _, predictions = torch.max(output, 1)
@@ -100,7 +102,7 @@ class ClassficationModel(L.LightningModule):
         
         # sklearn 분류기의 경우 출력을 one-hot 인코딩으로 변환
         if self.model.classifier_type != 'cnn':
-            output = torch.nn.functional.one_hot(output.long(), num_classes=5).float()
+            output = torch.nn.functional.one_hot(output.long(), num_classes=self.num_classes).float()
             
         loss = self.loss_fn(output, target)
         _, predictions = torch.max(output, 1)
@@ -181,45 +183,47 @@ class ClassficationModel(L.LightningModule):
             return None
     
 
-def main(classification_model, dataset_type, data_path, batch, epoch, save_path, device, gpus, precision, mode, ckpt):
-    model = ClassficationModel(create_model(classification_model, dataset_type))
-    model.dataset_type = dataset_type  # 데이터셋 타입 저장
-
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-
-    if device == 'gpu':
-        if len(gpus) == 1:
-            gpus = [int(gpus)]
-        else:
-            gpus = list(map(int, gpus.split(',')))
-    elif device == 'cpu':
-        gpus = 'auto'
-        precision = 32
+def main(classification_model: str, dataset_type: str, data_path: str, batch: int,
+         epoch: int, save_path: str, device: str, gpus: list, precision: str, mode: str, ckpt: str):
     
-    checkpoint_callback = ModelCheckpoint(
-        monitor='val_epoch_acc',
-        mode='max',
-        dirpath= f'{save_path}',
-        filename= f'{classification_model}-{dataset_type}-'+'{epoch:02d}-{val_epoch_acc:.2f}',
-        save_top_k=1,
+    wandb_logger = WandbLogger(project='classification')
+    
+    model = ClassficationModel(
+        model=create_model(classification_model, dataset_type),
+        batch_size=batch,
+        dataset_type=dataset_type
     )
-    early_stopping = EarlyStopping(
-        monitor='val_epoch_acc',
-        mode='max',
-        patience=10
-    )
-    wandb_logger = WandbLogger(project=f"{dataset_type}-classification")
     
     if mode == 'train':
+        callbacks = [
+            ModelCheckpoint(
+                dirpath=save_path,
+                filename=f'{classification_model}-{dataset_type}-'+'{epoch:02d}-{val_epoch_acc:.3f}',
+                monitor='val_epoch_acc',
+                mode='max'
+            ),
+            EarlyStopping(
+                monitor='val_epoch_acc',
+                patience=5,
+                mode='max'
+            )
+        ]
+        
+        # devices 파라미터를 정수로 변환
+        if isinstance(gpus, list):
+            num_gpus = len(gpus)
+        else:
+            num_gpus = 1
+            
         trainer = L.Trainer(
             accelerator=device,
-            devices=gpus,
-            max_epochs=epoch,
+            devices=num_gpus,
             precision=precision,
+            max_epochs=epoch,
             logger=wandb_logger,
-            callbacks=[checkpoint_callback, early_stopping],
+            callbacks=callbacks
         )
+        
         datamodule = CustomDataModule(dataset_type, data_path, batch)
         trainer.fit(model, datamodule)
         trainer.test(model, datamodule)
@@ -267,12 +271,12 @@ if __name__ == "__main__":
     parser.add_argument('-dt', '--dataset', type=str, default='cifar10',
                         choices=['cifar10', 'flowers'],
                         help='Dataset to use (cifar10 or flowers)')
-    parser.add_argument('-b', '--batch_size', dest='batch', type=int, default=32)
-    parser.add_argument('-e', '--epoch', type=int, default=1)
+    parser.add_argument('-b', '--batch_size', dest='batch', type=int, default=128)
+    parser.add_argument('-e', '--epoch', type=int, default=50)
     parser.add_argument('-d', '--data_path', dest='data', type=str, default='./dataset')
     parser.add_argument('-s', '--save_path', dest='save', type=str, default='./checkpoint/')
     parser.add_argument('-dc', '--device', type=str, default='gpu')
-    parser.add_argument('-g', '--gpus', type=str, nargs='+', default='0')
+    parser.add_argument('-g', '--gpus', type=int, default=1)
     parser.add_argument('-p', '--precision', type=str, default='32-true')
     parser.add_argument('-mo', '--mode', type=str, default='train')
     parser.add_argument('-c', '--ckpt_path', dest='ckpt', type=str, default='./checkpoint/')

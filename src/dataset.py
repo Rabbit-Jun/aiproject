@@ -18,18 +18,57 @@ class CustomDataModule(L.LightningDataModule):
         
         # 데이터셋별 이미지 크기 및 변환 설정
         if dataset_type == 'cifar10':
-            self.transform = transforms.Compose([
-                transforms.ToTensor(),
-            ])
-        elif dataset_type == 'flowers':
-            self.transform = transforms.Compose([
-                transforms.Resize((224, 224)),
-                transforms.RandomHorizontalFlip(),
+            self.train_transform = transforms.Compose([
+                transforms.ToTensor(),  # ToTensor를 먼저 적용
+                transforms.RandomHorizontalFlip(p=0.5),
                 transforms.RandomRotation(15),
-                transforms.ColorJitter(brightness=0.2, contrast=0.2),
+                transforms.ColorJitter(
+                    brightness=0.2,
+                    contrast=0.2,
+                    saturation=0.2,
+                    hue=0.1
+                ),
+                transforms.RandomErasing(p=0.2),
+                transforms.Normalize(
+                    mean=[0.4914, 0.4822, 0.4465],
+                    std=[0.2023, 0.1994, 0.2010]
+                )
+            ])
+            
+            self.test_transform = transforms.Compose([
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                   std=[0.229, 0.224, 0.225])
+                transforms.Normalize(
+                    mean=[0.4914, 0.4822, 0.4465],
+                    std=[0.2023, 0.1994, 0.2010]
+                )
+            ])
+            
+        elif dataset_type == 'flowers':
+            self.train_transform = transforms.Compose([
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),  # ToTensor를 먼저 적용
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomRotation(15),
+                transforms.ColorJitter(
+                    brightness=0.2,
+                    contrast=0.2,
+                    saturation=0.2,
+                    hue=0.1
+                ),
+                transforms.RandomErasing(p=0.2),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]
+                )
+            ])
+            
+            self.test_transform = transforms.Compose([
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]
+                )
             ])
 
     def setup(self, stage: str):
@@ -39,13 +78,13 @@ class CustomDataModule(L.LightningDataModule):
                     root=self.data_path,
                     train=True,
                     download=True,
-                    transform=self.transform
+                    transform=self.train_transform
                 )
                 self.test_dataset = datasets.CIFAR10(
                     root=self.data_path,
                     train=False,
                     download=True,
-                    transform=self.transform
+                    transform=self.test_transform
                 )
                 # 훈련 데이터의 20%를 검증 데이터로 사용
                 train_size = int(0.8 * len(self.train_dataset))
@@ -61,13 +100,13 @@ class CustomDataModule(L.LightningDataModule):
                 # 훈련 데이터셋 로드
                 self.train_dataset = datasets.ImageFolder(
                     root=train_dir,
-                    transform=self.transform
+                    transform=self.train_transform
                 )
                 
                 # 테스트 데이터셋 로드
                 self.test_dataset = datasets.ImageFolder(
                     root=test_dir,
-                    transform=self.transform
+                    transform=self.test_transform
                 )
                 
                 # 훈련 데이터의 20%를 검증 데이터로 사용

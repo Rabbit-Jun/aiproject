@@ -44,17 +44,54 @@ class HybridModel(nn.Module):
         self.num_classes = num_classes
         
         if classifier_type == 'cnn':
+            # 입력 특징 크기
+            input_size = 128 * 28 * 28
+            
+            # 더 깊은 분류기 네트워크
             self.classifier = nn.Sequential(
-                nn.Linear(128 * 28 * 28, 512),
+                # 첫 번째 블록
+                nn.Linear(input_size, 2048),
+                nn.BatchNorm1d(2048),
                 nn.ReLU(),
-                nn.Dropout(0.5),
-                nn.Linear(512, num_classes)
+                nn.Dropout(0.3),
+                
+                # 두 번째 블록
+                nn.Linear(2048, 1024),
+                nn.BatchNorm1d(1024),
+                nn.ReLU(),
+                nn.Dropout(0.3),
+                
+                # 세 번째 블록
+                nn.Linear(1024, 512),
+                nn.BatchNorm1d(512),
+                nn.ReLU(),
+                nn.Dropout(0.3),
+                
+                # 네 번째 블록
+                nn.Linear(512, 256),
+                nn.BatchNorm1d(256),
+                nn.ReLU(),
+                nn.Dropout(0.3),
+                
+                # 다섯 번째 블록
+                nn.Linear(256, 128),
+                nn.BatchNorm1d(128),
+                nn.ReLU(),
+                nn.Dropout(0.3),
+                
+                # 출력 레이어
+                nn.Linear(128, num_classes)
             )
+            
+            # Skip Connection을 위한 추가 레이어들
+            self.skip1 = nn.Linear(input_size, 1024)
+            self.skip2 = nn.Linear(1024, 512)
+            self.skip3 = nn.Linear(512, 256)
+            self.skip4 = nn.Linear(256, 128)
+            
         else:
-            # sklearn 분류기 초기화
             self.sklearn_classifier = self._create_classifier(classifier_type)
             self.is_fitted = False
-            # 특징 추출기의 파라미터 고정
             for param in self.feature_extractor.parameters():
                 param.requires_grad = False
 
@@ -74,9 +111,35 @@ class HybridModel(nn.Module):
         features = self.feature_extractor(x)
         
         if self.classifier_type == 'cnn':
-            return self.classifier(features)
+            # Skip Connection을 활용한 순전파
+            x = features
+            
+            # Skip Connection 1
+            identity1 = self.skip1(x)
+            x = self.classifier[0:4](x)  # 첫 번째 블록
+            x = x + identity1
+            
+            # Skip Connection 2
+            identity2 = self.skip2(x)
+            x = self.classifier[4:8](x)  # 두 번째 블록
+            x = x + identity2
+            
+            # Skip Connection 3
+            identity3 = self.skip3(x)
+            x = self.classifier[8:12](x)  # 세 번째 블록
+            x = x + identity3
+            
+            # Skip Connection 4
+            identity4 = self.skip4(x)
+            x = self.classifier[12:16](x)  # 네 번째 블록
+            x = x + identity4
+            
+            # 나머지 레이어 통과
+            x = self.classifier[16:](x)
+            
+            return x
         else:
-            # sklearn 분류기를 위해 numpy 배열로 변환
+            # sklearn 분류기 로직
             features = features.detach().cpu().numpy()
             
             if self.training:
