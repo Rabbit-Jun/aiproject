@@ -19,7 +19,7 @@ class CustomDataModule(L.LightningDataModule):
         # 데이터셋별 이미지 크기 및 변환 설정
         if dataset_type == 'cifar10':
             self.train_transform = transforms.Compose([
-                transforms.ToTensor(),  # ToTensor를 먼저 적용
+                transforms.ToTensor(),
                 transforms.RandomHorizontalFlip(p=0.5),
                 transforms.RandomRotation(15),
                 transforms.ColorJitter(
@@ -46,7 +46,7 @@ class CustomDataModule(L.LightningDataModule):
         elif dataset_type == 'flowers':
             self.train_transform = transforms.Compose([
                 transforms.Resize((224, 224)),
-                transforms.ToTensor(),  # ToTensor를 먼저 적용
+                transforms.ToTensor(),
                 transforms.RandomHorizontalFlip(p=0.5),
                 transforms.RandomRotation(15),
                 transforms.ColorJitter(

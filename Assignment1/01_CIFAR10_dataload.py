@@ -2,6 +2,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
+import numpy as np
 
 # 클래스 이름 정의
 class_names = [
@@ -39,6 +40,24 @@ print(f"클래스 목록: {trainset.classes}")
 print(f"전체 훈련 데이터 개수: {len(trainset)}")  
 # 출력: 50000
 
+# 클래스별 개수 계산
+class_counts = np.zeros(len(class_names), dtype=int)
+for _, label in trainset:
+    class_counts[label] += 1
+
+# 클래스별 개수 출력
+print("\n클래스별 데이터 개수:")
+for i, (name, count) in enumerate(zip(class_names, class_counts)):
+    print(f"{name}: {count}")
+
+# 클래스별 분포 시각화
+plt.figure(figsize=(12, 6))
+plt.bar(class_names, class_counts)
+plt.title('Class Distribution in Training Set')
+plt.xticks(rotation=45)
+plt.ylabel('Number of Images')
+plt.tight_layout()
+plt.show()
 
 # 이미지 시각화
 plt.figure(figsize=(10, 2))
