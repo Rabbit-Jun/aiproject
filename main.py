@@ -1,5 +1,6 @@
 import os
 import argparse
+import wandb
 
 import numpy as np
 import cv2 as cv2
@@ -13,11 +14,16 @@ from lightning.pytorch.loggers import WandbLogger
 from src.dataset import CustomDataModule
 from src.model import create_model
 
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+from wandb import plot
+
 
 SEED = 36
 L.seed_everything(SEED)
 class ClassficationModel(L.LightningModule):
-    def __init__(self,model, batch_size: int = 32, learning_rate: float = 0.0001):
+    def __init__(self, model, batch_size: int = 32, learning_rate: float = 0.0001, dataset_type: str = 'cifar10'):
         super().__init__()
         self.model = model
         self.batch_size = batch_size
@@ -26,6 +32,16 @@ class ClassficationModel(L.LightningModule):
         self.losses = []
         self.labels = []
         self.predictions = []
+        self.dataset_type = dataset_type
+        
+        # 데이터셋별 클래스 이름 설정
+        if dataset_type == 'cifar10':
+            self.class_names = [
+                "Airplane", "Automobile", "Bird", "Cat", "Deer",
+                "Dog", "Frog", "Horse", "Ship", "Truck"
+            ]
+        else:  # flowers
+            self.class_names = ["Daisy", "Dandelion", "Rose", "Sunflower", "Tulip"]
 
     def forward(self, inputs):
         return self.model(inputs)
@@ -84,16 +100,43 @@ class ClassficationModel(L.LightningModule):
         return loss
     
     def on_test_epoch_end(self):
-        labels = np.concatenate(np.array(self.labels, dtype = object))
-        predictions = np.concatenate(np.array(self.predictions, dtype = object))
+        labels = np.concatenate(np.array(self.labels, dtype=object))
+        predictions = np.concatenate(np.array(self.predictions, dtype=object))
         acc = sum(labels == predictions)/len(labels)
 
-        labels = labels.tolist()
-        predictions = predictions.tolist()
-        loss = sum(self.losses)/len(self.losses)
+        # 혼동 행렬 계산
+        cm = confusion_matrix(labels, predictions)
+        
+        # 혼동 행렬 시각화
+        plt.figure(figsize=(10, 8))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+                   xticklabels=self.class_names,
+                   yticklabels=self.class_names)
+        plt.title(f'Confusion Matrix\nAccuracy: {acc:.3f}')
+        plt.xlabel('Predicted')
+        plt.ylabel('True')
+        
+        # x축 레이블 회전
+        plt.xticks(rotation=45, ha='right')
+        plt.yticks(rotation=0)
+        
+        # 여백 조정
+        plt.tight_layout()
+        
+        # 파면에 표시
+        plt.show()
+        
+        # 파일로도 저장
+        plt.savefig(f'confusion_matrix_{self.dataset_type}.png', 
+                    bbox_inches='tight', 
+                    dpi=300)
+        plt.close()
 
-        self.log('test_epoch_acc', acc)
-        self.log('test_epoch_loss', loss)
+        # 클래스별 정확도 계산 및 출력
+        class_accuracies = cm.diagonal() / cm.sum(axis=1)
+        print("\n클래스별 정확도:")
+        for name, acc in zip(self.class_names, class_accuracies):
+            print(f"{name}: {acc:.3f}")
         
         self.losses.clear()
         self.labels.clear()
@@ -121,7 +164,10 @@ class ClassficationModel(L.LightningModule):
     
 
 def main(classification_model, dataset_type, data_path, batch, epoch, save_path, device, gpus, precision, mode, ckpt):
-    model = ClassficationModel(create_model(classification_model, dataset_type))
+    model = ClassficationModel(
+        model=create_model(classification_model, dataset_type),
+        dataset_type=dataset_type
+    )
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -178,7 +224,7 @@ def main(classification_model, dataset_type, data_path, batch, epoch, save_path,
             ]
             pred_label = class_names[pred_cls[0]]
         else:  # flowers
-            class_names = ["Daisy", "Dandelion", "Rose", "Sunflower", "Tulip"]  # 예시
+            class_names = ["Daisy", "Dandelion", "Rose", "Sunflower", "Tulip"]
             pred_label = class_names[pred_cls[0]]
         
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
