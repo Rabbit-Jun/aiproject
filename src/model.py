@@ -44,36 +44,39 @@ class HybridModel(nn.Module):
         self.num_classes = num_classes
         
         if classifier_type == 'cnn':
-            # 입력 특징 크기
-            input_size = 128 * 28 * 28
+            # 입력 특징 크기 계산 (CIFAR10: 128 * 4 * 4, Flowers: 128 * 28 * 28)
+            if num_classes == 10:  # CIFAR10
+                input_size = 128 * 4 * 4
+            else:  # Flowers
+                input_size = 128 * 28 * 28
             
-            # 더 깊은 분류기 네트워크
+            # Skip Connection을 위한 레이어
+            self.skip1 = nn.Linear(input_size, 1024)
+            self.skip2 = nn.Linear(1024, 512)
+            self.skip3 = nn.Linear(512, 256)
+            self.skip4 = nn.Linear(256, 128)
+            
+            # 분류기 네트워크
             self.classifier = nn.Sequential(
                 # 첫 번째 블록
-                nn.Linear(input_size, 2048),
-                nn.BatchNorm1d(2048),
-                nn.ReLU(),
-                nn.Dropout(0.3),
-                
-                # 두 번째 블록
-                nn.Linear(2048, 1024),
+                nn.Linear(input_size, 1024),
                 nn.BatchNorm1d(1024),
                 nn.ReLU(),
                 nn.Dropout(0.3),
                 
-                # 세 번째 블록
+                # 두 번째 블록
                 nn.Linear(1024, 512),
                 nn.BatchNorm1d(512),
                 nn.ReLU(),
                 nn.Dropout(0.3),
                 
-                # 네 번째 블록
+                # 세 번째 블록
                 nn.Linear(512, 256),
                 nn.BatchNorm1d(256),
                 nn.ReLU(),
                 nn.Dropout(0.3),
                 
-                # 다섯 번째 블록
+                # 네 번째 블록
                 nn.Linear(256, 128),
                 nn.BatchNorm1d(128),
                 nn.ReLU(),
@@ -82,31 +85,22 @@ class HybridModel(nn.Module):
                 # 출력 레이어
                 nn.Linear(128, num_classes)
             )
-            
-            # Skip Connection을 위한 추가 레이어들
-            self.skip1 = nn.Linear(input_size, 1024)
-            self.skip2 = nn.Linear(1024, 512)
-            self.skip3 = nn.Linear(512, 256)
-            self.skip4 = nn.Linear(256, 128)
-            
-        else:
-            self.sklearn_classifier = self._create_classifier(classifier_type)
+        elif classifier_type == 'knn':
+            self.sklearn_classifier = KNeighborsClassifier(n_neighbors=5)
             self.is_fitted = False
-            for param in self.feature_extractor.parameters():
-                param.requires_grad = False
-
-    def _create_classifier(self, classifier_type):
-        if classifier_type == 'knn':
-            return KNeighborsClassifier(n_neighbors=5)
         elif classifier_type == 'svm':
-            return SVC(kernel='rbf')
+            self.sklearn_classifier = SVC()
+            self.is_fitted = False
         elif classifier_type == 'dt':
-            return DecisionTreeClassifier()
+            self.sklearn_classifier = DecisionTreeClassifier()
+            self.is_fitted = False
         elif classifier_type == 'mlp':
-            return MLPClassifier(hidden_layer_sizes=(512, 256), max_iter=1000)
-        else:
-            raise ValueError(f"Unknown classifier type: {classifier_type}")
-    
+            self.sklearn_classifier = MLPClassifier(
+                hidden_layer_sizes=(100, 50),
+                max_iter=1000
+            )
+            self.is_fitted = False
+
     def forward(self, x):
         features = self.feature_extractor(x)
         

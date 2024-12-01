@@ -12,7 +12,6 @@ from lightning.pytorch.loggers import WandbLogger
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, classification_report
-import wandb
 
 from src.dataset import CustomDataModule
 from src.model import create_model
@@ -21,7 +20,7 @@ from src.model import create_model
 SEED = 36
 L.seed_everything(SEED)
 class ClassficationModel(L.LightningModule):
-    def __init__(self, model, batch_size: int = 32, learning_rate: float = 0.0001, dataset_type: str = 'flowers'):
+    def __init__(self, model, batch_size: int = 32, learning_rate: float = 0.0001, dataset_type: str = 'cifar10'):
         super().__init__()
         self.model = model
         self.batch_size = batch_size
@@ -31,8 +30,18 @@ class ClassficationModel(L.LightningModule):
         self.labels = []
         self.predictions = []
         self.automatic_optimization = False
-        self.dataset_type = dataset_type  # 데이터셋 타입 저장
-        self.num_classes = 10 if dataset_type == 'cifar10' else 5  
+        self.dataset_type = dataset_type
+        
+        # 데이터셋별 클래스 이름과 개수 설정
+        if dataset_type == 'cifar10':
+            self.class_names = [
+                "Airplane", "Automobile", "Bird", "Cat", "Deer",
+                "Dog", "Frog", "Horse", "Ship", "Truck"
+            ]
+            self.num_classes = 10
+        else:  # flowers
+            self.class_names = ["Daisy", "Dandelion", "Rose", "Sunflower", "Tulip"]
+            self.num_classes = 5
 
     def forward(self, inputs):
         return self.model(inputs)
@@ -124,35 +133,30 @@ class ClassficationModel(L.LightningModule):
         # 혼동 행렬 계산
         cm = confusion_matrix(labels, predictions)
         
-        # 클래스 이름 설정
-        if self.dataset_type == 'cifar10':
-            class_names = ["Airplane", "Automobile", "Bird", "Cat", "Deer",
-                         "Dog", "Frog", "Horse", "Ship", "Truck"]
-        else:  # flowers
-            class_names = ["Daisy", "Dandelion", "Rose", "Sunflower", "Tulip"]
-        
         # 혼동 행렬 시각화
         plt.figure(figsize=(10, 8))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-                   xticklabels=class_names,
-                   yticklabels=class_names)
-        plt.title('Confusion Matrix')
+                   xticklabels=self.class_names,
+                   yticklabels=self.class_names)
+        plt.title(f'Confusion Matrix\nAccuracy: {acc:.3f}')
         plt.xlabel('Predicted')
         plt.ylabel('True')
+        
+        # x축 레이블 회전
+        plt.xticks(rotation=45, ha='right')
+        plt.yticks(rotation=0)
+        
+        # 여백 조정
         plt.tight_layout()
         
-        # WandB에 혼동 행렬 이미지 로깅
-        self.logger.experiment.log({
-            "confusion_matrix": wandb.Image(plt),
-            "test_epoch_acc": acc,
-            "test_epoch_loss": sum(self.losses)/len(self.losses)
-        })
+        # 화면에 표시
+        plt.show()
         
-        # 상세 분류 리포트 출력
-        print("\nClassification Report:")
-        print(classification_report(labels, predictions, target_names=class_names))
-        
-        plt.close()
+        # 클래스별 정확도 계산 및 출력
+        class_accuracies = cm.diagonal() / cm.sum(axis=1)
+        print("\n클래스별 정확도:")
+        for name, acc in zip(self.class_names, class_accuracies):
+            print(f"{name}: {acc:.3f}")
         
         self.losses.clear()
         self.labels.clear()
@@ -183,47 +187,38 @@ class ClassficationModel(L.LightningModule):
             return None
     
 
-def main(classification_model: str, dataset_type: str, data_path: str, batch: int,
-         epoch: int, save_path: str, device: str, gpus: list, precision: str, mode: str, ckpt: str):
-    
-    wandb_logger = WandbLogger(project='classification')
-    
+def main(classification_model, dataset_type, data_path, batch, epoch, save_path, device, gpus, precision, mode, ckpt):
     model = ClassficationModel(
         model=create_model(classification_model, dataset_type),
-        batch_size=batch,
         dataset_type=dataset_type
+    )
+
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
+    checkpoint_callback = ModelCheckpoint(
+        monitor='val_epoch_acc',
+        mode='max',
+        dirpath=save_path,
+        filename=f'{classification_model}-{dataset_type}-'+'{epoch:02d}-{val_epoch_acc:.2f}',
+        save_top_k=1,
+    )
+    early_stopping = EarlyStopping(
+        monitor='val_epoch_acc',
+        mode='max',
+        patience=10
     )
     
     if mode == 'train':
-        callbacks = [
-            ModelCheckpoint(
-                dirpath=save_path,
-                filename=f'{classification_model}-{dataset_type}-'+'{epoch:02d}-{val_epoch_acc:.3f}',
-                monitor='val_epoch_acc',
-                mode='max'
-            ),
-            EarlyStopping(
-                monitor='val_epoch_acc',
-                patience=5,
-                mode='max'
-            )
-        ]
-        
-        # devices 파라미터를 정수로 변환
-        if isinstance(gpus, list):
-            num_gpus = len(gpus)
-        else:
-            num_gpus = 1
-            
         trainer = L.Trainer(
             accelerator=device,
-            devices=num_gpus,
-            precision=precision,
+            devices=gpus,
             max_epochs=epoch,
-            logger=wandb_logger,
-            callbacks=callbacks
+            precision=precision,
+            callbacks=[checkpoint_callback, early_stopping],
+            enable_progress_bar=True,
+            logger=False  # wandb logger 비활성화
         )
-        
         datamodule = CustomDataModule(dataset_type, data_path, batch)
         trainer.fit(model, datamodule)
         trainer.test(model, datamodule)
